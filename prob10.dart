@@ -1,145 +1,148 @@
-// Listing 11: Async Operations
-// Futures, async/await, Streams, Future.wait(), and Stream operators
+// Listing 10: Polymorphism
 
 // ============================================================
-// Problem 1: Future + async/await + Stream Generator
+// Problem 1: Runtime Polymorphic Dispatch
 // ============================================================
 
-Future<String> fetchUser() async {
-  await Future.delayed(const Duration(seconds: 1));
-  return 'User #1024';
+abstract interface class PaymentProcessor {
+  void process(double amount);
 }
 
-Stream<int> countStream(int max) async* {
-  for (int i = 1; i <= max; i++) {
-    await Future.delayed(const Duration(milliseconds: 200));
-    yield i;
+class CreditCardProcessor implements PaymentProcessor {
+  @override
+  void process(double amount) {
+    print('Paid \$$amount via Credit Card');
+  }
+}
+
+class CryptoProcessor implements PaymentProcessor {
+  @override
+  void process(double amount) {
+    print('Paid \$$amount via Crypto Wallet');
+  }
+}
+
+void checkout(PaymentProcessor p, double amount) {
+  p.process(amount);
+}
+
+// ============================================================
+// Problem 2: Polymorphic Shape List
+// ============================================================
+
+abstract class Shape {
+  double area();
+}
+
+class Circle extends Shape {
+  final double radius;
+
+  Circle(this.radius);
+
+  @override
+  double area() {
+    return 3.14159 * radius * radius;
+  }
+}
+
+class Rectangle extends Shape {
+  final double width;
+  final double height;
+
+  Rectangle(this.width, this.height);
+
+  @override
+  double area() {
+    return width * height;
   }
 }
 
 // ============================================================
-// Problem 2: Async Database Lookup
+// Problem 3: Runtime Type Checks using "is" and "as"
 // ============================================================
 
-Future<String> fetchUserFromDatabase() async {
-  print('Looking up user in database...');
+void checkShape(Shape shape) {
+  // "is" checks whether an object is a specific type.
+  if (shape is Circle) {
+    print('This shape is a Circle.');
+    print('Radius: ${shape.radius}');
+  }
 
-  await Future.delayed(const Duration(seconds: 2));
+  if (shape is Rectangle) {
+    print('This shape is a Rectangle.');
+  }
 
-  return 'User: John, ID: 2048';
-}
-
-// ============================================================
-// Problem 3: Future.wait()
-// Run three asynchronous tasks concurrently
-// ============================================================
-
-Future<String> task1() async {
-  await Future.delayed(const Duration(seconds: 1));
-  return 'Task 1 completed';
-}
-
-Future<String> task2() async {
-  await Future.delayed(const Duration(seconds: 2));
-  return 'Task 2 completed';
-}
-
-Future<String> task3() async {
-  await Future.delayed(const Duration(seconds: 1));
-  return 'Task 3 completed';
-}
-
-Future<void> runConcurrentTasks() async {
-  final results = await Future.wait([
-    task1(),
-    task2(),
-    task3(),
-  ]);
-
-  for (final result in results) {
-    print(result);
+  // "as" performs an explicit type cast.
+  if (shape is Circle) {
+    final circle = shape as Circle;
+    print('Circle radius after casting: ${circle.radius}');
   }
 }
 
 // ============================================================
-// Problem 4: Stream Subscription + Timer
-// Listen to periodic ticks and cancel after 5 emissions
+// Problem 4: Parametric Polymorphism with Repository<T>
 // ============================================================
 
-Stream<int> periodicTicks() async* {
-  int tick = 1;
+class Repository<T> {
+  final List<T> _items = [];
 
-  while (true) {
-    await Future.delayed(const Duration(seconds: 1));
-    yield tick++;
+  void add(T item) {
+    _items.add(item);
+  }
+
+  T get(int index) {
+    return _items[index];
+  }
+
+  List<T> getAll() {
+    return List.unmodifiable(_items);
   }
 }
 
-Future<void> listenToFiveTicks() async {
-  int count = 0;
-
-  late StreamSubscription<int> subscription;
-
-  subscription = periodicTicks().listen((value) async {
-    print('Tick: $value');
-
-    count++;
-
-    if (count == 5) {
-      await subscription.cancel();
-      print('Subscription cancelled.');
-    }
-  });
-
-  // Wait long enough for the five ticks to happen.
-  await Future.delayed(const Duration(seconds: 6));
-}
-
 // ============================================================
-// Problem 5: Stream Operators
-// map(), where(), distinct()
+// Problem 5: Sealed Classes + Exhaustive Pattern Matching
 // ============================================================
 
-Stream<int> numberStream() async* {
-  final numbers = [1, 1, 2, 3, 3, 4, 5, 5, 6];
+sealed class Result {}
 
-  for (final number in numbers) {
-    await Future.delayed(const Duration(milliseconds: 200));
-    yield number;
-  }
+class Success extends Result {
+  final String message;
+
+  Success(this.message);
 }
 
-Future<void> transformStream() async {
-  numberStream()
-      .map((number) => number * 2)
-      .where((number) => number > 4)
-      .distinct()
-      .listen((number) {
-    print('Transformed value: $number');
-  });
+class Failure extends Result {
+  final String error;
 
-  await Future.delayed(const Duration(seconds: 3));
+  Failure(this.error);
+}
+
+class Loading extends Result {}
+
+String handleResult(Result result) {
+  return switch (result) {
+    Success(:final message) => 'Success: $message',
+    Failure(:final error) => 'Failure: $error',
+    Loading() => 'Loading...',
+  };
 }
 
 // ============================================================
 // Main
 // ============================================================
 
-Future<void> main() async {
+void main() {
   // ----------------------------------------------------------
   // Problem 1
   // ----------------------------------------------------------
 
   print('--- Problem 1 ---');
 
-  final user = await fetchUser();
-  print(user);
+  final PaymentProcessor creditCard = CreditCardProcessor();
+  final PaymentProcessor crypto = CryptoProcessor();
 
-  print('Counting stream:');
-
-  await for (final number in countStream(5)) {
-    print(number);
-  }
+  checkout(creditCard, 100);
+  checkout(crypto, 50);
 
   // ----------------------------------------------------------
   // Problem 2
@@ -147,8 +150,16 @@ Future<void> main() async {
 
   print('\n--- Problem 2 ---');
 
-  final databaseUser = await fetchUserFromDatabase();
-  print(databaseUser);
+  final List<Shape> shapes = [
+    Circle(5),
+    Rectangle(10, 4),
+    Circle(3),
+    Rectangle(6, 2),
+  ];
+
+  for (final shape in shapes) {
+    print('Area: ${shape.area()}');
+  }
 
   // ----------------------------------------------------------
   // Problem 3
@@ -156,7 +167,11 @@ Future<void> main() async {
 
   print('\n--- Problem 3 ---');
 
-  await runConcurrentTasks();
+  final Shape circle = Circle(10);
+  final Shape rectangle = Rectangle(5, 3);
+
+  checkShape(circle);
+  checkShape(rectangle);
 
   // ----------------------------------------------------------
   // Problem 4
@@ -164,7 +179,23 @@ Future<void> main() async {
 
   print('\n--- Problem 4 ---');
 
-  await listenToFiveTicks();
+  final Repository<String> names = Repository<String>();
+
+  names.add('Ali');
+  names.add('John');
+  names.add('David');
+
+  print('Names: ${names.getAll()}');
+  print('First name: ${names.get(0)}');
+
+  final Repository<int> numbers = Repository<int>();
+
+  numbers.add(10);
+  numbers.add(20);
+  numbers.add(30);
+
+  print('Numbers: ${numbers.getAll()}');
+  print('First number: ${numbers.get(0)}');
 
   // ----------------------------------------------------------
   // Problem 5
@@ -172,5 +203,11 @@ Future<void> main() async {
 
   print('\n--- Problem 5 ---');
 
-  await transformStream();
+  final Result result1 = Success('Payment completed');
+  final Result result2 = Failure('Payment declined');
+  final Result result3 = Loading();
+
+  print(handleResult(result1));
+  print(handleResult(result2));
+  print(handleResult(result3));
 }
