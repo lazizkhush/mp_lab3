@@ -1,8 +1,9 @@
 class Person {
-  String name;
-  int age;
+  final String name;
+  final int age;
 
-  Person(this.name, this.age);
+  Person(this.name, this.age)
+      : assert(age >= 0 && age <= 120);
 }
 
 void main() {
